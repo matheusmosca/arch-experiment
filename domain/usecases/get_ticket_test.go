@@ -16,7 +16,7 @@ func TestGetTicket(t *testing.T) {
 
 	type args struct {
 		ctx   context.Context
-		input getTicketDTO
+		input GetTicketDTO
 	}
 
 	dumbTime := time.Date(2025, 12, 12, 0, 0, 0, 0, time.UTC)
@@ -31,7 +31,7 @@ func TestGetTicket(t *testing.T) {
 			name: "should get a ticket by id successfully",
 			args: args{
 				ctx: context.Background(),
-				input: getTicketDTO{
+				input: GetTicketDTO{
 					ID: "731411a7-96ce-4629-ad05-c408bdb530b9",
 				},
 			},
@@ -59,7 +59,7 @@ func TestGetTicket(t *testing.T) {
 			name: "should return an error when ticket is not found by repo",
 			args: args{
 				ctx: context.Background(),
-				input: getTicketDTO{
+				input: GetTicketDTO{
 					ID: "731411a7-96ce-4629-ad05-c408bdb530b9",
 				},
 			},
@@ -79,7 +79,7 @@ func TestGetTicket(t *testing.T) {
 			name: "should return an error when input is invalid due to empty id",
 			args: args{
 				ctx: context.Background(),
-				input: getTicketDTO{
+				input: GetTicketDTO{
 					ID: "",
 				},
 			},

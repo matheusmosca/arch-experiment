@@ -17,11 +17,11 @@ type getTicketUC struct {
 	ticketRepo ticketRepoGetTicketUC
 }
 
-type getTicketDTO struct {
+type GetTicketDTO struct {
 	ID string
 }
 
-func (uc getTicketUC) GetTicket(ctx context.Context, input getTicketDTO) (entities.Ticket, error) {
+func (uc getTicketUC) GetTicket(ctx context.Context, input GetTicketDTO) (entities.Ticket, error) {
 	if input.ID == "" {
 		return entities.Ticket{}, fmt.Errorf("%w: empty id: %s", domain.ErrInvalidParams, input.ID)
 	}
