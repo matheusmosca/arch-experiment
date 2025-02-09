@@ -1,11 +1,15 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
 
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
 	"github.com/matheusmosca/arch-experiment/domain/usecases"
 	"github.com/matheusmosca/arch-experiment/gateways/database/inmemory/tickets"
+	"github.com/matheusmosca/arch-experiment/gateways/http/api"
 )
 
 func main() {
@@ -15,12 +19,22 @@ func main() {
 
 	getTicketUC := usecases.NewGetTicketUC(ticketRepo)
 
-	ticket, err := getTicketUC.GetTicket(context.Background(), usecases.GetTicketDTO{
-		ID: "85403a74-441e-444f-8853-6a4530ec39dd",
+	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	getTicketHandler := api.NewGetTicket(getTicketUC)
+
+	r.Route("/api/v1", func(api chi.Router) {
+		api.Get("/tickets/{id}", getTicketHandler.GetTicket)
 	})
+
+	slog.Info("starting api in port 8080...")
+
+	// Start the HTTP server
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println(ticket)
 }
