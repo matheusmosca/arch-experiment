@@ -2,38 +2,70 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/kelseyhightower/envconfig"
+	"github.com/matheusmosca/arch-experiment/config"
 	"github.com/matheusmosca/arch-experiment/domain/usecases"
-	"github.com/matheusmosca/arch-experiment/gateways/database/inmemory/tickets"
+	"github.com/matheusmosca/arch-experiment/extensions/xlog"
+	secretsrepo "github.com/matheusmosca/arch-experiment/gateways/database/redis"
 	"github.com/matheusmosca/arch-experiment/gateways/http/api"
+	"github.com/matheusmosca/arch-experiment/gateways/http/middlewares"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
-	fmt.Println("init")
+	logger := xlog.New(os.Stdout)
 
-	ticketRepo := tickets.NewRepository()
+	var cfg config.Config
 
-	getTicketUC := usecases.NewGetTicketUC(ticketRepo)
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		PoolSize: 5,
+	})
+	defer redisClient.Close()
+
+	secretsRepo := secretsrepo.NewSecretsRepo(redisClient)
+
+	saveSecretUC := usecases.NewSaveSecretUC(secretsRepo)
+	getSecretUC := usecases.NewGetSecretUC(secretsRepo)
+
+	err := envconfig.Process("myapp", &cfg)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(
+		middlewares.LoggerToContext(logger),
+		middlewares.Logger,
+		middleware.Recoverer,
+	)
 
-	getTicketHandler := api.NewGetTicket(getTicketUC)
+	saveSecretHandler := api.NewSaveSecret(saveSecretUC)
+	getSecretHandler := api.NewGetSecret(getSecretUC)
 
-	r.Route("/api/v1", func(api chi.Router) {
-		api.Get("/tickets/{id}", getTicketHandler.GetTicket)
+	r.Route("/api/v1/secrets", func(api chi.Router) {
+		api.Post("/", saveSecretHandler.SaveSecret)
+		api.Get("/{id}", getSecretHandler.GetSecret)
 	})
 
-	slog.Info("starting api in port 8080...")
+	httpSRV := http.Server{
+		Handler:           r,
+		Addr:              fmt.Sprintf(":%s", cfg.API.Address),
+		WriteTimeout:      cfg.API.Timeout,
+		ReadTimeout:       cfg.API.Timeout,
+		ReadHeaderTimeout: cfg.API.Timeout,
+	}
+
+	logger.Info("starting web server")
 
 	// Start the HTTP server
-	err := http.ListenAndServe(":8080", r)
+	err = httpSRV.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
