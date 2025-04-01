@@ -22,9 +22,14 @@ func main() {
 
 	var cfg config.Config
 
+	err := envconfig.Process("myapp", &cfg)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		PoolSize: 5,
+		Addr:     fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Port),
+		PoolSize: cfg.Redis.PoolSize,
 	})
 	defer redisClient.Close()
 
@@ -32,11 +37,6 @@ func main() {
 
 	saveSecretUC := usecases.NewSaveSecretUC(secretsRepo)
 	getSecretUC := usecases.NewGetSecretUC(secretsRepo)
-
-	err := envconfig.Process("myapp", &cfg)
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
 
 	r := chi.NewRouter()
 
